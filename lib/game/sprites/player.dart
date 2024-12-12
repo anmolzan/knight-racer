@@ -1,32 +1,56 @@
 import 'dart:async';
-import 'package:car_game/game/sprites/coin_goldcar.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-
+import 'package:flame/effects.dart';
+import 'package:flutter/animation.dart';
+import 'package:racing_car/game/sprites/boost.dart';
+import 'package:racing_car/game/sprites/competitor.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import '/game/car_race.dart';
+import 'coin_gold.dart';
 
 enum PlayerState {
   left,
   right,
   center,
 }
+final Map<String,Vector2>characterSizes={
+  'rc1': Vector2(60,105),
+  'rc2': Vector2(60,95),
+  'rc3': Vector2(60,100),
+  'rc4': Vector2(60,100),
+  'rc5': Vector2(60,115),
+  'rc6': Vector2(60,110),
+  'rc7': Vector2(60,90),
+  'rc8': Vector2(60,110),
+  'rc9': Vector2(60,105),
+  'rc10': Vector2(60,105),
+  'rc11': Vector2(60,105),
+  'rc12': Vector2(60,105),
+
+};
+
 
 class Player extends SpriteGroupComponent<PlayerState>
     with HasGameRef<CarRace>, KeyboardHandler, CollisionCallbacks {
   Player({
     required this.character,
     this.moveLeftRightSpeed = 200,
+    this.mass = 1.0,
+    this.gravity = 9.8,
   }) : super(
-          size: Vector2(60, 90),
+          size: characterSizes[character.name]??Vector2(60, 110),
           anchor: Anchor.center,
           priority: 1,
+         // angle: 10
         );
   double moveLeftRightSpeed;
   Character character;
+  double mass;
+  double gravity;
+  bool hasMoveEffect = false;
+   bool visible =false;
 
-  // ignore: unused_field
-  int _hAxisInput = 0;
   final int movingLeftInput = -1;
   final int movingRightInput = 1;
   Vector2 velocity = Vector2.zero();
@@ -38,14 +62,17 @@ class Player extends SpriteGroupComponent<PlayerState>
     await super.onLoad();
     await add(CircleHitbox());
     await _loadCharacterSprites();
+
     current = PlayerState.center;
     _gyroscopeSubscription = gyroscopeEventStream().asBroadcastStream().listen(
       (event) {
         if (gameRef.gameManager.isPlaying) {
           // gameRef.updateTilt(event.y);
-          double tiltSensitivity =
-              250; // Adjust this value for tilt sensitivity
-          velocity.x = event.y * tiltSensitivity;
+          double tiltSensitivityX =
+              90;
+         // double tiltSensitivityY=100;
+          velocity.x = event.y * tiltSensitivityX;
+          //velocity.y = event.x * tiltSensitivityY;
           // velocity.x += event.y * 12;
           // _playerTilt = event.y;
           // print('event=> $event');
@@ -54,6 +81,8 @@ class Player extends SpriteGroupComponent<PlayerState>
           // } else if (event.y > 0.) {
           //   moveRight();
           // }
+          const double maxTiltAngle = 0.24 ; // Maximum rotation angle in radians
+          angle = (event.y * maxTiltAngle).clamp(-maxTiltAngle, maxTiltAngle);
         }
       },
     );
@@ -65,18 +94,26 @@ class Player extends SpriteGroupComponent<PlayerState>
 
     // velocity.x = _hAxisInput * moveLeftRightSpeed;
 
-    const double dampingFactor = 1.2;
+    const double dampingFactor = 1.1;
     velocity.x *= dampingFactor;
     final double marioHorizontalCenter = size.x / 2;
 
-    if (position.x < marioHorizontalCenter + 20) {
+    if (position.x < marioHorizontalCenter + 35) {
       // position.x = gameRef.size.x - (marioHorizontalCenter);
-      position.x = marioHorizontalCenter + 20;
+      position.x = marioHorizontalCenter + 35;
     }
     if (position.x > gameRef.size.x - (marioHorizontalCenter + 35)) {
       // position.x = marioHorizontalCenter;
       position.x = gameRef.size.x - (marioHorizontalCenter + 35);
     }
+    // if (position.y < marioHorizontalCenter + 25) {
+    //   // position.x = gameRef.size.x - (marioHorizontalCenter);
+    //   position.y = marioHorizontalCenter + 25;
+    // }
+    // if (position.y > gameRef.size.y - (marioHorizontalCenter + 35)) {
+    //   // position.x = marioHorizontalCenter;
+    //   position.y = gameRef.size.y - (marioHorizontalCenter + 35);
+    // }
 
     position += velocity * dt;
 
@@ -84,20 +121,61 @@ class Player extends SpriteGroupComponent<PlayerState>
   }
 
   @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+  Future<void> onCollision(Set<Vector2> intersectionPoints, PositionComponent other) async {
     super.onCollision(intersectionPoints, other);
-    print('other=> ${other}');
+
     if (other is CoinPlatform) {
       if (!other.hasCoinEarned) {
-        print('other=> TODO update coin value');
         other.updateEarned();
         gameRef.gameManager.increaseCoin();
-        other.removeFromParent();
+
+        final Vector2 topLeftCorner = Vector2(20, -150);
+
+        // Add MoveEffect to the coin
+        other.add(
+          MoveEffect.to(
+            topLeftCorner, // Move to top-left corner
+            EffectController(
+              duration: 1.0,
+              curve: Curves.easeInSine, // Smooth easing
+            ),
+            onComplete: () {
+              other.removeFromParent(); // Remove the coin after animation
+            },
+          ),
+        );
       }
       return;
     }
-    gameRef.onLose();
-    return;
+
+    if(other is BoostPlatform){
+      gameRef.gameManager.setBoostAvailable();
+      other.removeFromParent(); // Remove the coin after animation
+
+      // gameRef.backGround.startAcceleration();
+    // final pref= await SharedPreferences.getInstance();
+    // visible=(pref.getBool('visible')??false);
+    // await pref.setBool('visible', visible);
+      return;
+    }
+
+  // if (!hasMoveEffect) {
+    //   hasMoveEffect = true;
+    //   add(
+    //     MoveEffect.to(
+    //       Vector2(position.x + 50, position.y),
+    //       EffectController(duration: 0.5),
+    //       onComplete: () {
+    //         hasMoveEffect = false;
+    //       },
+    //     ),
+    //   );
+    // }
+
+
+    if (other is EnemyPlatform) {
+      gameRef.onLose();
+    }
   }
 
   // @override
@@ -116,23 +194,19 @@ class Player extends SpriteGroupComponent<PlayerState>
   // }
 
   void moveLeft() {
-    _hAxisInput = 0;
 
     current = PlayerState.left;
 
-    _hAxisInput += movingLeftInput;
   }
 
   void moveRight() {
-    _hAxisInput = 0; // by default not going left or right
+// by default not going left or right
 
     current = PlayerState.right;
 
-    _hAxisInput += movingRightInput;
   }
 
   void resetDirection() {
-    _hAxisInput = 0;
   }
 
   void reset() {
@@ -149,10 +223,23 @@ class Player extends SpriteGroupComponent<PlayerState>
 
   Future<void> _loadCharacterSprites() async {
     final center = await gameRef.loadSprite('Cars_image/${character.name}.png');
+   // final fire =await gameRef.loadSprite('game/cloud.png');
 
     sprites = <PlayerState, Sprite>{
       PlayerState.center: center,
     };
+    final fireAnimation = SpriteAnimationComponent.fromFrameData(
+      await gameRef.images.load('game/cloud1.png'),
+      SpriteAnimationData.sequenced(
+        amount: 10,
+        textureSize: Vector2(32, 32),
+        stepTime: 0.01,
+      ),
+      position: Vector2(size.x / 2, size.y + 25),
+      size: Vector2(30, 50),
+      anchor: Anchor.center,
+    );
+    await add(fireAnimation);
   }
 
   @override

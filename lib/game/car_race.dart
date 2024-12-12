@@ -5,7 +5,7 @@ import 'package:flame/game.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '/game/sprites/coin_goldcar.dart';
+import '/game/sprites/coin_gold.dart';
 import '/game/background.dart';
 import '/game/managers/game_manager.dart';
 import '/game/managers/object_manager.dart';
@@ -20,7 +20,7 @@ class CarRace extends FlameGame
   int levelIndex;
   CarRace({super.children, required this.character, required this.levelIndex});
 
-  late final BackGround _backGround;
+  late final BackGround backGround;
   late final GameManager gameManager;
   ObjectManager objectManager = ObjectManager();
   int screenBufferSpace = 200;
@@ -29,8 +29,8 @@ class CarRace extends FlameGame
   CoinPlatform platform1 = CoinPlatform();
   late Player player;
   late AudioPool pool;
+  bool isMusicEnabled = true;
 
-  // FPS control variables
   double timeSinceLastUpdate = 0.0;
   late final double updateInterval; // Initialized later in onLoad()
 
@@ -46,27 +46,29 @@ class CarRace extends FlameGame
   @override
   FutureOr<void> onLoad() async {
     // gameManager.selectCharacter(character);
-    _backGround = BackGround(levelIndex: levelIndex);
+    backGround = BackGround(levelIndex: levelIndex, );
     gameManager = GameManager(character: character);
     // print('command reaching');
-    await add(_backGround);
+    await add(backGround);
     await add(gameManager);
     overlays.add('gameOverlay');
-
+    final prefs = await SharedPreferences.getInstance();
+    isMusicEnabled = prefs.getBool('isMusicEnabled') ?? true;
     pool = await FlameAudio.createPool(
-      'audi_sound.mp3',
+      'bgm.mp3',
       minPlayers: 3,
       maxPlayers: 4,
+
     );
 
-    // Initialize the update interval here (after object creation)
+
     const double desiredFps = 90.0;
-    updateInterval = 1.0 / desiredFps; // Time per frame for 60 FPS
+    updateInterval = 1.0 / desiredFps;
   }
 
   @override
-  void update(double dt) {
-    // Accumulate the time passed since the last frame
+  void update(double dt,) {
+
     timeSinceLastUpdate += dt;
 
     // Run the update logic only when enough time has passed
@@ -95,11 +97,11 @@ class CarRace extends FlameGame
       // }
 
       // Calculate the bounds for the camera
-      final left = 0.0;
+      const left = 0.0;
       final top = camera.viewfinder.position.y - screenBufferSpace; // Top bound
       final width = camera.viewfinder.visibleWorldRect.width;
       final height =
-          camera.viewfinder.position.y + _backGround.size.y; // Bottom bound
+          camera.viewfinder.position.y + backGround.size.y; // Bottom bound
 
       // Set the camera bounds using the calculated rectangle
       camera.setBounds(Rectangle.fromLTRB(
@@ -114,9 +116,11 @@ class CarRace extends FlameGame
 
   @override
   Color backgroundColor() {
-    return const Color.fromARGB(255, 241, 247, 249);
+    return  Colors.black;
   }
-
+  BackGround backSide(){
+    return backGround;
+  }
   void setCharacter() {
     player = Player(
       character: gameManager.character,
@@ -134,12 +138,12 @@ class CarRace extends FlameGame
     }
 
     // Set bounds for the camera using Rect.fromLTRB
-    final left = 0.0;
+    const left = 0.0;
     final top =
-        -_backGround.size.y; // Top of screen is 0, so negative is off-screen
+        -backGround.size.y; // Top of screen is 0, so negative is off-screen
     final width = camera.viewfinder.visibleWorldRect.width;
     final height =
-        _backGround.size.y + screenBufferSpace; // Bottom bound off the screen
+        backGround.size.y + screenBufferSpace; // Bottom bound off the screen
 
     final rect = Rectangle.fromLTRB(
       left,
@@ -156,23 +160,32 @@ class CarRace extends FlameGame
 
     objectManager = ObjectManager();
     add(objectManager);
+    if(isMusicEnabled){
+    // pauseAudio();
     startBgmMusic();
+    }
+    else{
+
+    }
   }
 
-  void startBgmMusic() {
+  void startBgmMusic() async{
     FlameAudio.bgm.initialize();
-    FlameAudio.bgm.play('audi_sound.mp3', volume: 1);
+   await FlameAudio.bgm.play('bgm.mp3', volume: 1);
   }
-
+  void pauseAudio() {
+    FlameAudio.bgm.stop();
+  }
   void onLose() async {
     gameManager.state = GameState.gameOver;
     player.removeFromParent();
     FlameAudio.bgm.stop();
     int coin = gameManager.coin.value;
     final prefs = await SharedPreferences.getInstance();
-    int availableCoint = prefs.getInt('totalCoin') ?? 0;
-    await prefs.setInt("totalCoin", availableCoint + coin);
+    int availableCoin = prefs.getInt('totalCoin') ?? 0;
+    await prefs.setInt("totalCoin", availableCoin + coin);
     //totalCoin
+    // gameManager.coin.value=0;
     overlays.add('gameOverOverlay');
   }
 

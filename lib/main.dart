@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '/game/utils/color_theme.dart';
-import 'game/widgets/Game_outer_screens/Home screen.dart';
+import 'package:racing_car/utils/color_theme.dart';
+import 'game_outer_screens/home_screen.dart';
+
 
 
 void main() {
@@ -20,7 +21,7 @@ class MyApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         colorScheme: darkColorScheme,
-        // textTheme: GoogleFonts.audiowideTextTheme(ThemeData.dark().textTheme),
+        // textTheme: GoogleFonts.audioWideTextTheme(ThemeData.dark().textTheme),
         useMaterial3: true,
       ),
       home: const HomeScreen(),

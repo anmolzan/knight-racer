@@ -5,21 +5,21 @@ import '/game/car_race.dart';
 
 abstract class Competitor<T> extends SpriteGroupComponent<T>
     with HasGameRef<CarRace>, CollisionCallbacks {
-  final hitbox = RectangleHitbox();
+  final hitBox = RectangleHitbox();
 
   double direction = 1;
   final Vector2 _velocity = Vector2.zero();
-  double speed = 200;
+  double speed = 200*2.25;
 
-  Competitor({super.position}) : super(size: Vector2.all(60), priority: 2);
+  Competitor({super.position}) : super(size: Vector2(60,100), priority: 1);
 
   @override
   Future<void>? onLoad() async {
     await super.onLoad();
 
-    await add(hitbox);
+    await add(hitBox);
 
-    final points = getRandomPostionOfEnemy();
+    final points = getRandomPositionOfEnemy();
 
     position = Vector2(points.xPoint, points.yPoint);
   }
@@ -36,7 +36,7 @@ abstract class Competitor<T> extends SpriteGroupComponent<T>
     super.update(dt);
   }
 
-  ({double xPoint, double yPoint}) getRandomPostionOfEnemy() {
+  ({double xPoint, double yPoint}) getRandomPositionOfEnemy() {
     final random = Random();
     final randomXPoint =
         50 + random.nextInt((gameRef.size.x.toInt() - 100) - 50);

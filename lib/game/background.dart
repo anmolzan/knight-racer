@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flame/components.dart';
 import 'package:flame/parallax.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,33 +8,60 @@ class BackGround extends PositionComponent with HasGameRef<CarRace> {
   BackGround({required this.levelIndex});
   late ParallaxComponent parallaxComponent;
 
-  int levelIndex; // Declare the sprite
+  int levelIndex;
+  double acceleration = 0.0;
+  double maxAcceleration = 2.95; // Maximum acceleration multiplier
+  double accelerationDuration = 10.0; // Duration of acceleration
+  double elapsedAccelerationTime = 0.0;
+  bool isAccelerating = false;
 
   @override
   Future<void> onLoad() async {
-    // Load your sprite here
-    // final sprite = await Sprite.load(
-    //     'Roads/road${levelIndex}.jpg'); // Load the background image
     size = gameRef.size;
-    parallaxComponent = await ParallaxComponent.load([
-      ParallaxImageData('Roads/road$levelIndex.jpg'), // Far background layer
-      //ParallaxImageData('game/layer1.png'),
-      // ParallaxImageData('game/layer_6.png', ),
-      //ParallaxImageData('game/layer_4.webp'),// Middle layer
-      // ParallaxImageData('background/layer2.png'),  // Foreground layer
-    ],
-        baseVelocity: Vector2(0, -200), // Speed of vertical scrolling
-        velocityMultiplierDelta: Vector2(0, 0.8),
-        repeat: ImageRepeat.repeatY,
-        fill: LayerFill.width); // Set the size based on your sprite
 
-    // Add the parallax component to the game
+    parallaxComponent = await ParallaxComponent.load(
+      [
+        ParallaxImageData('Roads/road$levelIndex.jpg'),
+      ],
+      baseVelocity: Vector2(0, -300),
+      velocityMultiplierDelta: Vector2(0, 0.8),
+      repeat: ImageRepeat.repeatY,
+      fill: LayerFill.width,
+    );
+
     add(parallaxComponent);
+  }
+
+  void startAcceleration() {
+    if (isAccelerating) return;
+
+    isAccelerating = true;
+    acceleration = 0.1;
+    elapsedAccelerationTime = 0.0;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    // Any additional logic for the background can be implemented here
+
+    if (isAccelerating) {
+      elapsedAccelerationTime += dt;
+
+      if (elapsedAccelerationTime <= accelerationDuration) {
+        double progress = elapsedAccelerationTime / accelerationDuration;
+        double currentAcceleration = 1 + (maxAcceleration - 1) * progress;
+
+
+        for (final layer in parallaxComponent.parallax!.layers) {
+          layer.velocityMultiplier = Vector2(0, currentAcceleration);
+        }
+      } else {
+
+        for (final layer in parallaxComponent.parallax!.layers) {
+          layer.velocityMultiplier = Vector2(0, 1);
+        }
+        isAccelerating = false;
+      }
+    }
   }
 }

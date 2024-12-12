@@ -1,16 +1,20 @@
 import 'dart:math';
 
 import 'package:flame/components.dart';
-import '/game/sprites/coin_goldcar.dart';
+import '../sprites/boost.dart';
+import '/game/sprites/coin_gold.dart';
 import '/game/managers/game_manager.dart';
 import '/game/car_race.dart';
 import '/game/sprites/competitor.dart';
 
 final Random _rand = Random();
-final Random _rand1 = Random();
 
 class ObjectManager extends Component with HasGameRef<CarRace> {
   ObjectManager();
+
+  double _enemySpawnTimer = 0;
+  double _coinSpawnTimer = 0;
+  double _boostSpawnTimer = 0;
 
   @override
   void onMount() {
@@ -19,25 +23,35 @@ class ObjectManager extends Component with HasGameRef<CarRace> {
     addEnemy(1);
     _maybeAddEnemy();
     addCoin();
-    addGoldCar();
+    addBoost();
   }
 
   @override
   void update(double dt) {
-    // if (gameRef.gameManager.state == GameState.playing) {
-    //   gameRef.gameManager.increaseScore();
-    // }
-    if (gameRef.gameManager.state == GameState.playing) {
-      if (_rand.nextDouble() < 0.01) {
-        addCoin();
-      }
-    }
-    addEnemy(1);
-    if (gameRef.gameManager.state == GameState.playing) {
-      // gameRef.gameManager.increaseCoin();
+    super.update(dt);
+
+    if (gameRef.gameManager.state != GameState.playing) return;
+
+    _enemySpawnTimer += dt;
+    _coinSpawnTimer += dt;
+    _boostSpawnTimer += dt;
+
+    if (_enemySpawnTimer > 2) {
+      addEnemy(1);
+      _maybeAddEnemy();
+      _enemySpawnTimer = 0;
     }
 
-    super.update(dt);
+    if (_coinSpawnTimer > 6) {
+      addCoin();
+      _coinSpawnTimer = 0;
+    }
+
+    if (_boostSpawnTimer > 15) {
+
+      addBoost();
+      _boostSpawnTimer = 0;
+    }
   }
 
   final Map<String, bool> specialPlatforms = {
@@ -48,23 +62,14 @@ class ObjectManager extends Component with HasGameRef<CarRace> {
     specialPlatforms[specialty] = true;
   }
 
-  void addEnemy(int level) {
-    switch (level) {
-      case 1:
-        enableSpecialty('enemy');
-    }
-  }
-
   final List<CoinPlatform> _coins = [];
-  var coin = CoinPlatform();
+
   void addCoin() {
     if (gameRef.gameManager.state != GameState.playing) return;
 
-    // Generate a random position for the coin
-    var currentX = _rand1.nextDouble() * (gameRef.size.x - 50) +
-        25; // Random X within screen bounds
+    var currentX = _rand.nextDouble() * (gameRef.size.x - 50) + 25;
     var currentY =
-        gameRef.size.y - (_rand1.nextInt(gameRef.size.y.floor()) / 2) - 50;
+        gameRef.size.y - (_rand.nextInt(gameRef.size.y.floor()) / 2) - 50;
 
     var coin = CoinPlatform(
       position: Vector2(currentX, currentY),
@@ -72,63 +77,73 @@ class ObjectManager extends Component with HasGameRef<CarRace> {
 
     add(coin);
     _coins.add(coin);
-    // _cleanupCoins();
+
+    _cleanupCoins();
   }
 
-  void addGoldCar() {}
+  final List<BoostPlatform> _boosts = [];
+
+  void addBoost() {
+    if (gameRef.gameManager.state != GameState.playing) return;
+
+    var currentX = _rand.nextDouble() * (gameRef.size.x - 50) + 25;
+    var currentY =
+        gameRef.size.y - (_rand.nextInt(gameRef.size.y.floor()) / 2) - 1000;
+
+    var boost = BoostPlatform(
+      position: Vector2(currentX, currentY),
+    );
+
+    add(boost);
+    _boosts.add(boost);
+
+   // _cleanupBoost();
+  }
 
   final List<EnemyPlatform> _enemies = [];
+
+  void addEnemy(int level) {
+    enableSpecialty('enemy');
+  }
+
   void _maybeAddEnemy() {
-    if (specialPlatforms['enemy'] != true) {
-      return;
-    }
+    if (!specialPlatforms['enemy']!) return;
 
-    var currentX = (gameRef.size.x.floor() / 2).toDouble() - 50;
-
+    var currentX = (gameRef.size.x / 2).toDouble() - 50;
     var currentY =
         gameRef.size.y - (_rand.nextInt(gameRef.size.y.floor()) / 3) - 10;
-    var enemy = EnemyPlatform(
-      position: Vector2(
-        currentX,
-        currentY,
-      ),
-    );
-    add(enemy);
 
+    var enemy = EnemyPlatform(
+      position: Vector2(currentX, currentY),
+    );
+
+    add(enemy);
     _enemies.add(enemy);
+
     _cleanupEnemies();
   }
 
-  void _cleanupEnemies() {
-    Future.delayed(
-      const Duration(seconds: 4),
-      () {
-        _enemies.clear();
-
-        Future.delayed(
-          const Duration(seconds: 1),
-          () {
-            if (gameRef.gameManager.state == GameState.playing) {
-              // gameRef.gameManager.increaseCoin();
-            }
-            _maybeAddEnemy();
-          },
-        );
-      },
-    );
+  Future<void> _cleanupEnemies() async {
+    await Future.delayed(const Duration(seconds: 6));
+    for (var enemy in _enemies) {
+      enemy.removeFromParent();
+    }
+    _enemies.clear();
   }
 
-  //
-  void _cleanupCoins() {
-    Future.delayed(
-      const Duration(seconds: 15),
-      () {
-        for (var coin in _coins) {
-          coin.removeFromParent();
-        }
-        _coins.clear();
-      },
-    );
+  Future<void> _cleanupCoins() async {
+    await Future.delayed(const Duration(seconds: 5));
+    for (var coin in _coins) {
+      coin.removeFromParent();
+    }
+    _coins.clear();
   }
+
+  // / Future<void> _cleanupBoost() async {
+ //    await Future.delayed(const Duration(seconds: 5));
+ //    for (var boost in _boosts) {
+ //      boost.removeFromParent();
+ //    }
+ //    _boosts.clear();
+ //  }
 }
-// use of await

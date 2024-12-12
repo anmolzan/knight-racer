@@ -1,13 +1,11 @@
 import 'dart:math';
-
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-
 import '../car_race.dart';
 
 abstract class GoldCoin<T> extends SpriteGroupComponent<T>
     with HasGameRef<CarRace>, CollisionCallbacks {
-  final hitbox = CircleHitbox(
+  final hitBox = CircleHitbox(
     collisionType: CollisionType.active,
   );
 
@@ -26,9 +24,9 @@ abstract class GoldCoin<T> extends SpriteGroupComponent<T>
   Future<void>? onLoad() async {
     await super.onLoad();
 
-    await add(hitbox);
+    await add(hitBox);
 
-    final points = getRandomPostionOfCoin();
+    final points = getRandomPositionOfCoin();
 
     position = Vector2(points.xPoint, points.yPoint);
   }
@@ -45,7 +43,7 @@ abstract class GoldCoin<T> extends SpriteGroupComponent<T>
     super.update(dt);
   }
 
-  ({double xPoint, double yPoint}) getRandomPostionOfCoin() {
+  ({double xPoint, double yPoint}) getRandomPositionOfCoin() {
     final random = Random();
     final randomXPoint =
         50 + random.nextInt((gameRef.size.x.toInt() - 100) - 50);
